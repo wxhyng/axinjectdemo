@@ -1,0 +1,38 @@
+name: Build AXInjectDemo .tipa
+
+# 无 Mac 方案：把本工程 push 到 GitHub，在此 Actions 的 macOS 云上自动编译出 AXInjectDemo.tipa
+# 用法：仓库 → Actions → Build AXInjectDemo .tipa → Run workflow → 下载产物 AXInjectDemo.tipa
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build unsigned app (arm64)
+        run: |
+          xcodebuild -project AXInjectDemo.xcodeproj \
+                     -target AXInjectDemo \
+                     -configuration Release \
+                     -sdk iphoneos \
+                     -arch arm64 \
+                     CODE_SIGNING_ALLOWED=NO \
+                     build
+
+      - name: Package .tipa
+        run: |
+          APP=$(find build/Release-iphoneos -maxdepth 2 -name "AXInjectDemo.app" -type d | head -1)
+          [ -n "$APP" ] || { echo "no .app"; exit 1; }
+          rm -rf Payload AXInjectDemo.tipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -r AXInjectDemo.tipa Payload >/dev/null
+          echo "built: $(ls -la AXInjectDemo.tipa)"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AXInjectDemo.tipa
+          path: AXInjectDemo.tipa
